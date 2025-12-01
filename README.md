@@ -132,3 +132,25 @@ This allows access to:
 | **Supabase API** | `supabase` |
 
 -----
+
+# FastAPI Docs
+`url/docs` - swagger api
+`url/docs` - newer one
+
+
+`@app.get("/posts/{id}")` - path parameters
+
+# Throwing Exceptions in FastAPI
+
+
+# Query Parameters
+comes after the question mark
+
+# Post endpoint
+schemas.py
+
+enhancing the documentation - creating response classes
+
+# Database Connection
+
+
