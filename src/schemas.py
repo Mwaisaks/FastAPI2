@@ -5,6 +5,5 @@ class PostCreate(BaseModel):
     content: str
 
 class PostResponse(BaseModel):
-    id: int
     title: str
     content: str

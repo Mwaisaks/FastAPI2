@@ -63,7 +63,7 @@ These two will appear in almost every FastAPI project:
 
 ### 3\. Your database determines extra dependencies
 
-| Database Setup | Dependencies to Add |
+ | Database Setup | Dependencies to Add |
 | :--- | :--- |
 | **SQLite (async)** | `aiosqlite`, `sqlalchemy` |
 | **PostgreSQL (async)** | `asyncpg`, `sqlalchemy` |
@@ -152,5 +152,8 @@ schemas.py
 enhancing the documentation - creating response classes
 
 # Database Connection
+
+# Creating Posts and Saving them to the Database
+FastAPI is async be default
 
 
