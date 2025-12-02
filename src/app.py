@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Depends
+from src.schemas import PostCreate, PostResponse, UserUpdate, UserCreate, UserRead
 from sqlalchemy import select
 from src.db import Post, create_db_and_tables, get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,14 +10,21 @@ import shutil
 import os
 import tempfile
 from uuid import UUID
+from src.users import auth_backend, current_active_user, fastapi_users
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(src: FastAPI):
     await create_db_and_tables()
     yield
 
 
 app = FastAPI(lifespan=lifespan)
+
+app.include_router(fastapi_users.get_auth_router(auth_backend), prefix='/auth/jwt', tags=["auth"])
+app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"])
+app.include_router(fastapi_users.get_reset_password_router(),prefix="/auth", tags=["auth"])
+app.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"])
+app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
 
 
 @app.post("/upload")
@@ -109,11 +117,11 @@ async def delete_post(
 ):
     try:
         # Convert string to UUID
-        uuid_obj = UUID(post_id)
+        post_uuid = UUID(post_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid UUID format")
 
-    result = await session.execute(select(Post).where(Post.id == uuid_obj))
+    result = await session.execute(select(Post).where(Post.id == post_uuid))
     post = result.scalar_one_or_none()
 
     if not post:

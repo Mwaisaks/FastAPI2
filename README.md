@@ -156,4 +156,4 @@ enhancing the documentation - creating response classes
 # Creating Posts and Saving them to the Database
 FastAPI is async be default
 
-
+the child is the one that contains the foreign key
