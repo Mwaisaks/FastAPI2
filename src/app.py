@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Depends
 from src.schemas import PostCreate, PostResponse, UserUpdate, UserCreate, UserRead
 from sqlalchemy import select
-from src.db import Post, create_db_and_tables, get_async_session
+from src.db import Post, create_db_and_tables, get_async_session, User
 from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
 from src.images import imagekit
@@ -11,6 +11,7 @@ import os
 import tempfile
 from uuid import UUID
 from src.users import auth_backend, current_active_user, fastapi_users
+from sqlalchemy.orm import selectinload
 
 @asynccontextmanager
 async def lifespan(src: FastAPI):
@@ -31,6 +32,7 @@ app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix=
 async def upload_file(
         file: UploadFile = File(...),
         caption: str = Form(""),
+        user: User = Depends(current_active_user),
         session: AsyncSession = Depends(get_async_session)
 ):
     temp_file_path = None
@@ -60,6 +62,7 @@ async def upload_file(
 
         # Save to database
         post = Post(
+            user_id = user.id,
             caption=caption,
             url=upload_result.url,
             file_type=file_type,
@@ -91,19 +94,26 @@ async def upload_file(
 
 @app.get("/feed")
 async def get_feed(
-        session: AsyncSession = Depends(get_async_session)
+        session: AsyncSession = Depends(get_async_session),
+        user: User = Depends(current_active_user)
 ):
-    result = await session.execute(select(Post).order_by(Post.created_at.desc()))
+    # Query posts with their associated users
+    result = await session.execute(
+        select(Post).options(selectinload(Post.user)).order_by(Post.created_at.desc())
+    )
     posts = result.scalars().all()
 
     posts_data = [
         {
             "id": str(post.id),
+            "user_id": str(post.user_id),
             "caption": post.caption,
             "url": post.url,
             "file_type": post.file_type,
             "file_name": post.file_name,
-            "created_at": post.created_at.isoformat()
+            "created_at": post.created_at.isoformat(),
+            "is_owner": post.user_id == user.id,
+            "email": post.user.email if post.user else "Unknown"
         }
         for post in posts
     ]
@@ -113,7 +123,8 @@ async def get_feed(
 @app.delete("/posts/{post_id}")
 async def delete_post(
         post_id: str,
-        session: AsyncSession = Depends(get_async_session)
+        session: AsyncSession = Depends(get_async_session),
+        user:User = Depends(current_active_user)
 ):
     try:
         # Convert string to UUID
@@ -126,6 +137,9 @@ async def delete_post(
 
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
+
+    if post.user_id != user.id:
+        raise HTTPException(status_code=403, detail="You are not authorized to perform this action")
 
     await session.delete(post)
     await session.commit()
